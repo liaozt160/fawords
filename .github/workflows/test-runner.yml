@@ -1,0 +1,31 @@
+name: Test Self-Hosted Runner
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test-job:
+    runs-on: [self-hosted, linux, x64, docker]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify Environment and Host
+        run: |
+          echo "=========================================="
+          echo "GitHub Actions is running on our self-hosted runner!"
+          echo "Host Name: $(hostname)"
+          echo "OS Details:"
+          uname -a
+          echo "Active User: $(whoami)"
+          echo "Current Directory: $(pwd)"
+          echo "=========================================="
+
+      - name: Check System Tools
+        run: |
+          echo "Checking available development tools inside the container:"
+          command -v docker &> /dev/null && docker --version || echo "docker not found"
+          command -v git &> /dev/null && git --version || echo "git not found"
+          command -v curl &> /dev/null && curl --version || echo "curl not found"
