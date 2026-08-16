@@ -20,13 +20,16 @@ jobs:
           repository: liaozt160/fawords
           token: ${{ secrets.PAT_TOKEN }}
 
+      - name: Debug Event
+        run: |
+          echo "Comment body: ${{ github.event.comment.body }}"
+          echo "Issue number: ${{ github.event.issue.number }}"
+
       - name: Run OpenHands Resolver
         id: openhands-run
-        # 移除了顶层 if，改在这里进行逻辑判断和执行
-        if: contains(github.event.comment.body, '@openhand')
+        # 移除了 if 条件，强制执行以进行调试
         run: |
           set -x
-          echo "Executing OpenHands Resolver for issue: ${{ github.event.issue.number }}"
           docker run --rm \
             -e LLM_MODEL="${{ vars.LLM_MODEL || 'litellm_proxy/gemini-3.5-flash-group' }}" \
             -e LLM_API_BASE="${{ vars.LLM_API_BASE || 'http://192.168.0.101:4000/' }}" \
