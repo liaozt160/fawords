@@ -14,25 +14,30 @@ jobs:
       repository-projects: write
 
     steps:
-      - name: Checkout Fawords Repository
-        uses: actions/checkout@v4
-        with:
-          repository: liaozt160/fawords
-          token: ${{ secrets.PAT_TOKEN }}
+      - name: Prepare Local Repository
+        run: |
+          set -e
+          # 使用宿主机已有的仓库副本，完全避免外部网络 checkout 失败
+          cp -r /home/liao/workspace/fawords_setup/fawords /home/liao/actions-runner/_work/fawords/fawords
+          cd /home/liao/actions-runner/_work/fawords/fawords
+          git fetch --all --tags --prune
+          git reset --hard origin/main
+          echo "Workspace ready at $(pwd)"
 
       - name: Install OpenHands Dependencies
         run: |
-          # 确保 runner 宿主机拥有运行环境
           pip3 install openhands-ai --break-system-packages
 
       - name: Run OpenHands Resolver
         id: openhands-run
         run: |
+          set -x
           export HTTP_PROXY="http://192.168.0.101:10808"
           export HTTPS_PROXY="http://192.168.0.101:10808"
           export LITELLM_DROP_PARAMS="true"
           
-          # 使用 python 直接运行，规避 docker 嵌套问题
+          cd /home/liao/actions-runner/_work/fawords/fawords
+          
           python3 -m openhands.core.main \
             --issue ${{ github.event.issue.number }} \
             --repo ${{ github.repository }} \
