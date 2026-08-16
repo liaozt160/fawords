@@ -21,6 +21,15 @@ jobs:
           repository: liaozt160/fawords
           token: ${{ secrets.PAT_TOKEN }}
 
+      - name: Debug Environment
+        run: |
+          echo "Checking Docker connectivity..."
+          docker info
+          echo "Checking workspace permissions..."
+          ls -la /workspace || echo "Workspace not accessible"
+          echo "Checking LLM Proxy connectivity..."
+          curl -v http://192.168.0.101:4000/ || echo "Proxy unreachable"
+
       - name: Run OpenHands Resolver
         id: openhands-run
         run: |
@@ -38,7 +47,7 @@ jobs:
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
             ghcr.io/openhands/openhands:main \
-            python3 -m openhands.core.main --issue ${{ github.event.issue.number }} --repo ${{ github.repository }}
+            python3 -m openhands.core.main --issue ${{ github.event.issue.number }} --repo ${{ github.repository }} --debug
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
           OPENHANDS_LLM_API_KEY: ${{ secrets.OPENHANDS_LLM_API_KEY }}
