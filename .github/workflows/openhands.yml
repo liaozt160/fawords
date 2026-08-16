@@ -7,7 +7,7 @@ on:
 jobs:
   resolve-issue:
     if: contains(github.event.comment.body, '@openhand')
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, st]
     permissions:
       contents: write
       pull-requests: write

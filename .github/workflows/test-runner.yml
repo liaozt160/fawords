@@ -7,7 +7,7 @@ on:
 
 jobs:
   test-job:
-    runs-on: [self-hosted, linux, x64, docker]
+    runs-on: [self-hosted, st]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
