@@ -12,10 +12,46 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
+      repository-projects: write # Needed for OpenHands to update issues/PRs
+
     steps:
-      - name: Run OpenHands Resolver
-        uses: All-Hands-AI/OpenHands/.github/workflows/openhands-resolver.yml@main
+      - name: Checkout Fawords Repository
+        uses: actions/checkout@v4
         with:
+          repository: liaozt160/fawords # Ensure we checkout the right repository
+          token: ${{ secrets.PAT_TOKEN }} # Use a PAT with repo scope for checkout
+
+      - name: Set up Docker BuildX
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run OpenHands in Docker
+        id: openhands-run
+        run: |
+          # The OpenHands CLI expects certain environment variables for LLM configuration
+          # We'll pass them from our workflow secrets/vars
+          docker run --rm \
+            -e LLM_MODEL="${{ vars.LLM_MODEL || 'litellm_proxy/gemini-3.5-flash-group' }}" \
+            -e LLM_API_BASE="${{ vars.LLM_API_BASE || 'http://192.168.0.101:4000/' }}" \
+            -e LLM_API_KEY="${{ secrets.OPENHANDS_LLM_API_KEY }}" \
+            -e GITHUB_TOKEN="${{ secrets.PAT_TOKEN }}" \
+            -e GITHUB_REPOSITORY="${{ github.repository }}" \
+            -e GITHUB_ISSUE_NUMBER="${{ github.event.issue.number }}" \
+            -e GITHUB_ISSUE_TITLE="${{ github.event.issue.title }}" \
+            -e GITHUB_ISSUE_BODY="${{ github.event.issue.body }}" \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v ${{ github.workspace }}:/workspace \
+            ghcr.io/openhands/openhands:main \
+            /bin/bash -c "cd /workspace && python3 -m openhands.core.main --issue ${{ github.event.issue.number }} --repo ${{ github.repository }}"
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }} # Pass PAT as env for script
+          # Also ensure OPENHANDS_LLM_API_KEY is available in the runner's environment as a secret
+          OPENHANDS_LLM_API_KEY: ${{ secrets.OPENHANDS_LLM_API_KEY }}
           LLM_MODEL: "litellm_proxy/gemini-3.5-flash-group"
           LLM_API_BASE: "http://192.168.0.101:4000/"
-          LLM_API_KEY: ${{ secrets.OPENHANDS_LLM_API_KEY }}
+
+      - name: Post OpenHands Output (Optional)
+        if: always() && steps.openhands-run.outcome != 'success'
+        run: |
+          echo "OpenHands execution failed. Please check logs for details."
+          # Optionally post detailed logs as a comment
+          # This part might need custom scripting based on OpenHands output
