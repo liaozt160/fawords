@@ -21,15 +21,6 @@ jobs:
           repository: liaozt160/fawords
           token: ${{ secrets.PAT_TOKEN }}
 
-      - name: Debug Environment
-        run: |
-          echo "Checking Docker connectivity..."
-          docker info
-          echo "Checking workspace permissions..."
-          ls -la /workspace || echo "Workspace not accessible"
-          echo "Checking LLM Proxy connectivity..."
-          curl -v http://192.168.0.101:4000/ || echo "Proxy unreachable"
-
       - name: Run OpenHands Resolver
         id: openhands-run
         run: |
@@ -43,6 +34,7 @@ jobs:
             -e GITHUB_ISSUE_NUMBER="${{ github.event.issue.number }}" \
             -e HTTP_PROXY="http://192.168.0.101:10808" \
             -e HTTPS_PROXY="http://192.168.0.101:10808" \
+            -e LITELLM_DROP_PARAMS="true" \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
@@ -51,3 +43,4 @@ jobs:
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
           OPENHANDS_LLM_API_KEY: ${{ secrets.OPENHANDS_LLM_API_KEY }}
+          LITELLM_DROP_PARAMS: "true"
