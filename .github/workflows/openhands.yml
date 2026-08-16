@@ -20,32 +20,25 @@ jobs:
           repository: liaozt160/fawords
           token: ${{ secrets.PAT_TOKEN }}
 
-      - name: Debug Event
+      - name: Install OpenHands Dependencies
         run: |
-          echo "Comment body: ${{ github.event.comment.body }}"
-          echo "Issue number: ${{ github.event.issue.number }}"
+          # 确保 runner 宿主机拥有运行环境
+          pip3 install openhands-ai --break-system-packages
 
       - name: Run OpenHands Resolver
         id: openhands-run
-        # 移除了 if 条件，强制执行以进行调试
         run: |
-          set -x
-          docker run --rm \
-            -e LLM_MODEL="${{ vars.LLM_MODEL || 'litellm_proxy/gemini-3.5-flash-group' }}" \
-            -e LLM_API_BASE="${{ vars.LLM_API_BASE || 'http://192.168.0.101:4000/' }}" \
-            -e LLM_API_KEY="${{ secrets.OPENHANDS_LLM_API_KEY }}" \
-            -e GITHUB_TOKEN="${{ secrets.PAT_TOKEN }}" \
-            -e GITHUB_REPOSITORY="${{ github.repository }}" \
-            -e GITHUB_ISSUE_NUMBER="${{ github.event.issue.number }}" \
-            -e HTTP_PROXY="http://192.168.0.101:10808" \
-            -e HTTPS_PROXY="http://192.168.0.101:10808" \
-            -e LITELLM_DROP_PARAMS="true" \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            -v ${{ github.workspace }}:/workspace \
-            -w /workspace \
-            ghcr.io/openhands/openhands:main \
-            python3 -m openhands.core.main --issue ${{ github.event.issue.number }} --repo ${{ github.repository }} --debug
+          export HTTP_PROXY="http://192.168.0.101:10808"
+          export HTTPS_PROXY="http://192.168.0.101:10808"
+          export LITELLM_DROP_PARAMS="true"
+          
+          # 使用 python 直接运行，规避 docker 嵌套问题
+          python3 -m openhands.core.main \
+            --issue ${{ github.event.issue.number }} \
+            --repo ${{ github.repository }} \
+            --debug
         env:
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-          OPENHANDS_LLM_API_KEY: ${{ secrets.OPENHANDS_LLM_API_KEY }}
-          LITELLM_DROP_PARAMS: "true"
+          LLM_MODEL: ${{ vars.LLM_MODEL || 'litellm_proxy/gemini-3.5-flash-group' }}
+          LLM_API_BASE: "http://192.168.0.101:4000/"
+          LLM_API_KEY: ${{ secrets.OPENHANDS_LLM_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
