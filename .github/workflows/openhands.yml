@@ -17,19 +17,23 @@ jobs:
       - name: Prepare Local Repository
         run: |
           set -e
-          # 使用宿主机已有的仓库副本，完全避免外部网络 checkout 失败
-          # Runner 工作目录是 /home/liao/actions-runner/_work/fawords
-          # 我们直接将源仓库内容复制到工作目录中
+          # 直接使用 GitHub Actions 内置的 workspace 变量，避免路径硬编码错误
+          # github.workspace = /home/liao/actions-runner/_work/fawords/fawords (Runner 自动创建)
           SOURCE_DIR="/home/liao/workspace/fawords_setup/fawords"
-          WORK_DIR="/home/liao/actions-runner/_work/fawords"
+          WORK_DIR="${{ github.workspace }}"
           
           echo "Source: $SOURCE_DIR"
           echo "Work dir: $WORK_DIR"
           
-          # 清空工作目录并复制内容
-          rm -rf "$WORK_DIR"/*
-          cp -r "$SOURCE_DIR"/* "$WORK_DIR"/
-          cp -r "$SOURCE_DIR"/.git "$WORK_DIR"/ 2>/dev/null || true
+          # 清空工作目录并复制内容（使用数组避免 glob 展开问题）
+          shopt -s dotglob nullglob
+          files=("$SOURCE_DIR"/*)
+          if [ ${#files[@]} -gt 0 ]; then
+            rm -rf "$WORK_DIR"/*
+            cp -r "${files[@]}" "$WORK_DIR"/
+            # 复制 .git 目录
+            [ -d "$SOURCE_DIR/.git" ] && cp -r "$SOURCE_DIR/.git" "$WORK_DIR"/
+          fi
           
           cd "$WORK_DIR"
           git fetch --all --tags --prune
@@ -48,7 +52,7 @@ jobs:
           export HTTPS_PROXY="http://192.168.0.101:10808"
           export LITELLM_DROP_PARAMS="true"
           
-          cd /home/liao/actions-runner/_work/fawords
+          cd "${{ github.workspace }}"
           
           python3 -m openhands.core.main \
             --issue ${{ github.event.issue.number }} \
