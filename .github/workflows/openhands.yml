@@ -18,8 +18,20 @@ jobs:
         run: |
           set -e
           # 使用宿主机已有的仓库副本，完全避免外部网络 checkout 失败
-          cp -r /home/liao/workspace/fawords_setup/fawords /home/liao/actions-runner/_work/fawords/fawords
-          cd /home/liao/actions-runner/_work/fawords/fawords
+          # Runner 工作目录是 /home/liao/actions-runner/_work/fawords
+          # 我们直接将源仓库内容复制到工作目录中
+          SOURCE_DIR="/home/liao/workspace/fawords_setup/fawords"
+          WORK_DIR="/home/liao/actions-runner/_work/fawords"
+          
+          echo "Source: $SOURCE_DIR"
+          echo "Work dir: $WORK_DIR"
+          
+          # 清空工作目录并复制内容
+          rm -rf "$WORK_DIR"/*
+          cp -r "$SOURCE_DIR"/* "$WORK_DIR"/
+          cp -r "$SOURCE_DIR"/.git "$WORK_DIR"/ 2>/dev/null || true
+          
+          cd "$WORK_DIR"
           git fetch --all --tags --prune
           git reset --hard origin/main
           echo "Workspace ready at $(pwd)"
@@ -36,7 +48,7 @@ jobs:
           export HTTPS_PROXY="http://192.168.0.101:10808"
           export LITELLM_DROP_PARAMS="true"
           
-          cd /home/liao/actions-runner/_work/fawords/fawords
+          cd /home/liao/actions-runner/_work/fawords
           
           python3 -m openhands.core.main \
             --issue ${{ github.event.issue.number }} \
