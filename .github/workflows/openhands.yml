@@ -23,7 +23,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.PAT_TOKEN }}
+          token: ${{ github.token }}
 
       - name: Run OpenHands Resolver
         id: openhands-run
@@ -40,7 +40,7 @@ jobs:
           /home/liao/.openhands-venv/bin/python -m openhands.resolver.resolve_issue \
             --issue-number "$ISSUE_NUM" \
             --selected-repo ${{ github.repository }} \
-            --token ${{ secrets.PAT_TOKEN }} \
+            --token ${{ github.token }} \
             --username liaozt160 \
             --llm-model ${{ vars.LLM_MODEL || 'litellm_proxy/gemini-3.5-flash-group' }} \
             --llm-base-url "http://192.168.0.101:4000/" \
@@ -51,4 +51,4 @@ jobs:
           LLM_MODEL: ${{ vars.LLM_MODEL || 'litellm_proxy/gemini-3.5-flash-group' }}
           LLM_API_BASE: "http://192.168.0.101:4000/"
           LLM_API_KEY: ${{ secrets.OPENHANDS_LLM_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
