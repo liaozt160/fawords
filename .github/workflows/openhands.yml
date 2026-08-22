@@ -42,12 +42,12 @@ jobs:
             --selected-repo ${{ github.repository }} \
             --token ${{ github.token }} \
             --username liaozt160 \
-            --llm-model ${{ vars.LLM_MODEL || 'litellm_proxy/gemini-3.5-flash-group' }} \
+            --llm-model gemini-flash-main \
             --llm-base-url "http://192.168.0.101:4000/" \
             --llm-api-key ${{ secrets.OPENHANDS_LLM_API_KEY }} \
-            --max-iterations 3
+            --max-iterations 5
         env:
-          LLM_MODEL: ${{ vars.LLM_MODEL || 'litellm_proxy/gemini-3.5-flash-group' }}
+          LLM_MODEL: gemini-flash-main
           LLM_API_BASE: "http://192.168.0.101:4000/"
           LLM_API_KEY: ${{ secrets.OPENHANDS_LLM_API_KEY }}
           GITHUB_TOKEN: ${{ github.token }}
