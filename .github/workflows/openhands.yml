@@ -3,6 +3,12 @@ name: OpenHand Issue Resolver
 on:
   issue_comment:
     types: [created]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Issue number to resolve'
+        required: true
+        default: '3'
 
 jobs:
   resolve-issue:
@@ -14,35 +20,10 @@ jobs:
       repository-projects: write
 
     steps:
-      - name: Prepare Local Repository
-        run: |
-          set -e
-          # 直接使用 GitHub Actions 内置的 workspace 变量，避免路径硬编码错误
-          # github.workspace = /home/liao/actions-runner/_work/fawords/fawords (Runner 自动创建)
-          SOURCE_DIR="/home/liao/workspace/fawords_setup/fawords"
-          WORK_DIR="${{ github.workspace }}"
-          
-          echo "Source: $SOURCE_DIR"
-          echo "Work dir: $WORK_DIR"
-          
-          # 清空工作目录并复制内容（使用数组避免 glob 展开问题）
-          shopt -s dotglob nullglob
-          files=("$SOURCE_DIR"/*)
-          if [ ${#files[@]} -gt 0 ]; then
-            rm -rf "$WORK_DIR"/*
-            cp -r "${files[@]}" "$WORK_DIR"/
-            # 复制 .git 目录
-            [ -d "$SOURCE_DIR/.git" ] && cp -r "$SOURCE_DIR/.git" "$WORK_DIR"/
-          fi
-          
-          cd "$WORK_DIR"
-          git fetch --all --tags --prune
-          git reset --hard origin/main
-          echo "Workspace ready at $(pwd)"
-
-      - name: Install OpenHands Dependencies
-        run: |
-          pip3 install openhands-ai --break-system-packages
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Run OpenHands Resolver
         id: openhands-run
@@ -54,9 +35,17 @@ jobs:
           
           cd "${{ github.workspace }}"
           
-          python3 -m openhands.core.main \
-            --issue ${{ github.event.issue.number }} \
-            --repo ${{ github.repository }} \
+          ISSUE_NUM="${{ github.event.issue.number || github.event.inputs.issue_number || '3' }}"
+          
+          /home/liao/.openhands-venv/bin/python -m openhands.resolver.resolve_issue \
+            --issue-number "$ISSUE_NUM" \
+            --selected-repo ${{ github.repository }} \
+            --token ${{ secrets.PAT_TOKEN }} \
+            --username liaozt160 \
+            --llm-model ${{ vars.LLM_MODEL || 'litellm_proxy/gemini-3.5-flash-group' }} \
+            --llm-base-url "http://192.168.0.101:4000/" \
+            --llm-api-key ${{ secrets.OPENHANDS_LLM_API_KEY }} \
+            --max-iterations 5 \
             --debug
         env:
           LLM_MODEL: ${{ vars.LLM_MODEL || 'litellm_proxy/gemini-3.5-flash-group' }}
