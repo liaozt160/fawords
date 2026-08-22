@@ -29,26 +29,22 @@ jobs:
         id: openhands-run
         run: |
           set -x
-          # 代理设置
           export HTTP_PROXY="http://192.168.0.101:10808"
           export HTTPS_PROXY="http://192.168.0.101:10808"
           export http_proxy="http://192.168.0.101:10808"
           export https_proxy="http://192.168.0.101:10808"
-          
-          # 不走代理的内网地址，确保 Docker 运行时和本地 API 调用顺畅
           export NO_PROXY="localhost,127.0.0.1,192.168.0.101,192.168.0.30,192.168.0.0/16"
           export no_proxy="localhost,127.0.0.1,192.168.0.101,192.168.0.30,192.168.0.0/16"
-          
           export LITELLM_DROP_PARAMS="true"
           
           cd "${{ github.workspace }}"
           
           ISSUE_NUM="${{ github.event.issue.number || github.event.inputs.issue_number || '3' }}"
           
-          # 核心修复：直接使用环境变量，并确保 LLM_BASE_URL 符合 OpenHands 内部解析逻辑
           /home/liao/.openhands-venv/bin/python -m openhands.resolver.resolve_issue \
             --issue-number "$ISSUE_NUM" \
             --selected-repo ${{ github.repository }} \
+            --token ${{ github.token }} \
             --username liaozt160 \
             --max-iterations 5
         env:
