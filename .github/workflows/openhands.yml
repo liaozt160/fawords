@@ -12,7 +12,6 @@ on:
 
 jobs:
   resolve-issue:
-    # 过滤非相关评论触发，仅在响应 /resolve 或 @openhands 命令时运行
     if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.comment.body, '/resolve') || contains(github.event.comment.body, '@openhands') }}
     runs-on: [self-hosted, st]
     permissions:
@@ -41,36 +40,55 @@ jobs:
           ISSUE_NUM="${{ github.event.issue.number || github.event.inputs.issue_number || '3' }}"
           echo "issue_num=$ISSUE_NUM" >> $GITHUB_OUTPUT
 
+      - name: Pre-clean Environment Zombie Processes
+        run: |
+          # 运行前清理可能残留的前台/后台阻塞进程
+          pkill -f "spring-boot:run" || true
+          pkill -f "mvn" || true
+          pkill -f "python" || true
+          pkill -f "node" || true
+
       - name: Run OpenHands Resolver
         id: openhands-run
         run: |
           set -x
+          # 1. 代理配置
           export HTTP_PROXY="http://192.168.0.101:10808"
           export HTTPS_PROXY="http://192.168.0.101:10808"
           export http_proxy="http://192.168.0.101:10808"
           export https_proxy="http://192.168.0.101:10808"
           export NO_PROXY="localhost,127.0.0.1,192.168.0.101,192.168.0.30,192.168.0.0/16"
           export no_proxy="localhost,127.0.0.1,192.168.0.101,192.168.0.30,192.168.0.0/16"
-          export LITELLM_DROP_PARAMS="true"
           
+          # 2. 持久化依赖缓存 (针对各种语言环境)
+          export MAVEN_OPTS="-Dmaven.repo.local=/home/liao/.m2/repository"
+          export GRADLE_USER_HOME="/home/liao/.gradle"
+          export PIP_CACHE_DIR="/home/liao/.cache/pip"
+          export UV_CACHE_DIR="/home/liao/.cache/uv"
+          export npm_config_cache="/home/liao/.npm"
+
+          # 3. LLM 及 OpenHands 变量
+          export LITELLM_DROP_PARAMS="true"
           export LLM_API_KEY="${{ secrets.OPENHANDS_LLM_API_KEY }}"
           export LITELLM_PROXY_API_KEY="${{ secrets.OPENHANDS_LLM_API_KEY }}"
           export OPENAI_API_KEY="${{ secrets.OPENHANDS_LLM_API_KEY }}"
           export LLM_MODEL="litellm_proxy/gemini-flash-main"
           export LLM_BASE_URL="http://192.168.0.101:4000/v1"
-          
+
+          # 4. 插入针对 Agent 的全局行为指令（防止启动阻塞服务）
+          export SYSTEM_PROMPT_APPENDIX="IMPORTANT: Do NOT run persistent foreground commands like 'mvn spring-boot:run', './gradlew bootRun', 'npm start', or 'python main.py'. Always run unit tests or launch background services with nohup and kill them after testing."
+
           cd "${{ github.workspace }}"
           ISSUE_NUM="${{ steps.prep.outputs.issue_num }}"
           
-          # 执行 OpenHands 原生解析逻辑（自动完成改码、新建分支并提交 PR）
           /home/liao/.openhands-venv/bin/python -m openhands.resolver.resolve_issue \
             --issue-number "$ISSUE_NUM" \
             --selected-repo ${{ github.repository }} \
             --token ${{ github.token }} \
             --username liaozt160 \
-            --max-iterations 30
+            --max-iterations 40
         env:
-          LLM_MODEL: litellm_proxy/gemini-flash-main
+          LLM_MODEL: litellm_proxy/gemini-flash-lite
           LLM_BASE_URL: "http://192.168.0.101:4000/v1"
           LLM_API_KEY: ${{ secrets.OPENHANDS_LLM_API_KEY }}
           LITELLM_PROXY_API_KEY: ${{ secrets.OPENHANDS_LLM_API_KEY }}
