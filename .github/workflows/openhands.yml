@@ -72,7 +72,7 @@ jobs:
           export LLM_API_KEY="${{ secrets.OPENHANDS_LLM_API_KEY }}"
           export LITELLM_PROXY_API_KEY="${{ secrets.OPENHANDS_LLM_API_KEY }}"
           export OPENAI_API_KEY="${{ secrets.OPENHANDS_LLM_API_KEY }}"
-          export LLM_MODEL="litellm_proxy/gemini-flash-main"
+          export LLM_MODEL="litellm_proxy/gemini-flash-lite"
           export LLM_BASE_URL="http://192.168.0.101:4000/v1"
 
           # 4. 插入针对 Agent 的全局行为指令（防止启动阻塞服务）
