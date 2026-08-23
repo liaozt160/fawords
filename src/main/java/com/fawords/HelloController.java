@@ -10,4 +10,9 @@ public class HelloController {
     public String sayHello() {
         return "Hello World! This is Spring Boot 4.1.0 running on Java 21 inside Fawords (fawords.com).";
     }
+
+    @GetMapping("/api/about")
+    public String about() {
+        return "test about";
+    }
 }
