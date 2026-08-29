@@ -1,6 +1,9 @@
 package com.example.demo.dto;
 
 import com.example.demo.config.SecurityConfig;
+import com.example.demo.payload.request.SignupRequest;
+import com.example.demo.payload.request.SigninRequest;
+import com.example.demo.payload.response.AuthResponse;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
