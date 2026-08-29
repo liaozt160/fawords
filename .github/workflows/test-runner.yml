@@ -1,31 +1,137 @@
-name: Test Self-Hosted Runner
+name: Test Runner - Automated Build & Diagnostics
 
 on:
   push:
-    branches: [ main ]
+    branches: [ test-runner ]
   workflow_dispatch:
+
+env:
+  JAVA_VERSION: '17'
+  MAVEN_VERSION: '3.9.x'
+  PROJECT_NAME: 'fawords'
+  PROJECT_DESCRIPTION: 'Spring Boot 3.3.2 Authentication & Security Service'
 
 jobs:
   test-job:
+    name: Diagnose & Test Environment
     runs-on: [self-hosted, st]
+    
     steps:
+      # ============================================
+      # STEP 1: Setup & Repository Checkout
+      # ============================================
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Verify Environment and Host
+        with:
+          fetch-depth: 0
+          
+      # ============================================
+      # STEP 2: System Environment Diagnostics
+      # ============================================
+      - name: Diagnose System Environment
         run: |
-          echo "=========================================="
-          echo "GitHub Actions is running on our self-hosted runner!"
-          echo "Host Name: $(hostname)"
-          echo "OS Details:"
+          echo "╔════════════════════════════════════════════════════════════════════╗"
+          echo "║             SYSTEM ENVIRONMENT DIAGNOSTICS - START                ║"
+          echo "╚════════════════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "📍 RUNNER INFORMATION:"
+          echo "   Host Name: $(hostname)"
+          echo "   Runner Type: Self-Hosted"
+          echo "   Active User: $(whoami)"
+          echo "   Current Directory: $(pwd)"
+          echo ""
+          echo "🖥️  OS DETAILS:"
           uname -a
-          echo "Active User: $(whoami)"
-          echo "Current Directory: $(pwd)"
-          echo "=========================================="
+          echo ""
+          echo "💾 SYSTEM RESOURCES:"
+          echo "   Total Memory:" 
+          free -h 2>/dev/null || vm_stat | grep -i "Pages free" || echo "   N/A - Windows system"
+          echo "   CPU Count: $(nproc 2>/dev/null || echo 'N/A')"
+          echo ""
 
-      - name: Check System Tools
+      # ============================================
+      # STEP 3: Required Tools Verification
+      # ============================================
+      - name: Verify Required Development Tools
         run: |
-          echo "Checking available development tools inside the container:"
-          command -v docker &> /dev/null && docker --version || echo "docker not found"
-          command -v git &> /dev/null && git --version || echo "git not found"
-          command -v curl &> /dev/null && curl --version || echo "curl not found"
+          echo "🔧 REQUIRED DEVELOPMENT TOOLS:"
+          echo ""
+          
+          echo "   ✓ Git:"
+          command -v git &> /dev/null && git --version || (echo "      ❌ NOT FOUND" && exit 1)
+          
+          echo "   ✓ Java (Required: ${{ env.JAVA_VERSION }}):"
+          command -v java &> /dev/null && java -version 2>&1 | head -n 3 || (echo "      ❌ NOT FOUND" && exit 1)
+          
+          echo "   ✓ Maven:"
+          command -v mvn &> /dev/null && mvn -version | head -n 1 || (echo "      ❌ NOT FOUND" && exit 1)
+          
+          echo "   ✓ Docker:"
+          command -v docker &> /dev/null && docker --version || echo "      ⚠️  OPTIONAL - Not found"
+          
+          echo "   ✓ cURL:"
+          command -v curl &> /dev/null && curl --version | head -n 1 || echo "      ⚠️  OPTIONAL - Not found"
+          echo ""
+
+      # ============================================
+      # STEP 4: Java & Maven Environment Details
+      # ============================================
+      - name: Display Java & Maven Configuration
+        run: |
+          echo "☕ JAVA ENVIRONMENT:"
+          echo "   JAVA_HOME: ${JAVA_HOME:-'Not set'}"
+          java -XshowSettings:properties -version 2>&1 | grep -E "java.version|java.home" || true
+          echo ""
+          echo "📦 MAVEN ENVIRONMENT:"
+          mvn -version
+          echo ""
+          
+      # ============================================
+      # STEP 5: Project Dependencies Analysis
+      # ============================================
+      - name: Analyze Project Dependencies
+        run: |
+          echo "╔════════════════════════════════════════════════════════════════════╗"
+          echo "║            PROJECT DEPENDENCIES & CONFIGURATION                   ║"
+          echo "╚════════════════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "📋 PROJECT METADATA:"
+          echo "   Name: ${{ env.PROJECT_NAME }}"
+          echo "   Description: ${{ env.PROJECT_DESCRIPTION }}"
+          echo "   Base Framework: Spring Boot 3.3.2"
+          echo "   Java Version: ${{ env.JAVA_VERSION }}"
+          echo ""
+          echo "📚 DEPENDENCY TREE (Top Level):"
+          mvn dependency:tree -DoutputFile=/tmp/deps.txt 2>&1 | tail -20 || true
+          echo ""
+          echo "🔍 KEY DEPENDENCIES MANIFEST:"
+          mvn help:describe -Dartifact=com.fawords:fawords:0.0.1-SNAPSHOT 2>&1 | head -20 || true
+          echo ""
+          
+      # ============================================
+      # STEP 6: Detailed Dependency Information
+      # ============================================
+      - name: Check Core Dependencies Details
+        run: |
+          echo "🔐 CORE FRAMEWORK DEPENDENCIES:"
+          echo ""
+          echo "   Spring Boot Stack:"
+          echo "      - spring-boot-starter-web (REST/Web API)"
+          echo "      - spring-boot-starter-data-jpa (Database ORM)"
+          echo "      - spring-boot-starter-security (Authentication/Authorization)"
+          echo "      - spring-boot-starter-validation (Input Validation)"
+          echo "      - spring-boot-starter-test (Testing Framework)"
+          echo ""
+          echo "   Security & JWT:"
+          echo "      - io.jsonwebtoken:jjwt-api:0.11.5 (JWT Token Creation)"
+          echo "      - io.jsonwebtoken:jjwt-impl:0.11.5 (JWT Implementation)"
+          echo "      - io.jsonwebtoken:jjwt-jackson:0.11.5 (JSON Serialization)"
+          echo ""
+          echo "   Database & ORM:"
+          echo "      - spring-boot-starter-data-jpa (Hibernate/JPA)"
+          echo "      - com.h2database:h2 (In-Memory DB for Testing)"
+          echo ""
+          echo "   Utilities & Documentation:"
+          echo "      - org.projectlombok:lombok (Code Generation)"
+          echo "      - org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0 (Swagger/OpenAPI)"
+          echo ""
