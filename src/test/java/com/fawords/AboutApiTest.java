@@ -23,4 +23,11 @@ class AboutApiTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string("test about"));
     }
+
+    @Test
+    void helloApiReturnsCorrectContent() throws Exception {
+        mockMvc.perform(get("/hello"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Hello World! This is Spring Boot 4.1.0 running on Java 21 inside Fawords (fawords.com)."));
+    }
 }
