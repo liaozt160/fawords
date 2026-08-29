@@ -1,8 +1,8 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.AuthResponse;
-import com.example.demo.dto.SigninRequest;
-import com.example.demo.dto.SignupRequest;
+import com.example.demo.payload.response.AuthResponse;
+import com.example.demo.payload.request.SigninRequest;
+import com.example.demo.payload.request.SignupRequest;
 import com.example.demo.entity.Role;
 import com.example.demo.entity.User;
 import com.example.demo.repository.UserRepository;
