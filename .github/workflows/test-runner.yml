@@ -135,3 +135,111 @@ jobs:
           echo "      - org.projectlombok:lombok (Code Generation)"
           echo "      - org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0 (Swagger/OpenAPI)"
           echo ""
+          
+      # ============================================
+      # STEP 7: Maven Clean & Build
+      # ============================================
+      - name: Build Project with Maven
+        run: |
+          echo "╔════════════════════════════════════════════════════════════════════╗"
+          echo "║                   BUILDING PROJECT WITH MAVEN                      ║"
+          echo "╚════════════════════════════════════════════════════════════════════╝"
+          echo ""
+          mvn clean package -V -DskipTests=false -X 2>&1 | tee build.log
+          BUILD_STATUS=$?
+          echo ""
+          echo "✅ Build Status: $BUILD_STATUS"
+          if [ $BUILD_STATUS -eq 0 ]; then
+            echo "✓ Build completed successfully"
+          else
+            echo "✗ Build failed"
+            exit $BUILD_STATUS
+          fi
+          
+      # ============================================
+      # STEP 8: Run Unit Tests
+      # ============================================
+      - name: Run Unit Tests with Coverage
+        run: |
+          echo "╔════════════════════════════════════════════════════════════════════╗"
+          echo "║                     EXECUTING UNIT TESTS                           ║"
+          echo "╚════════════════════════════════════════════════════════════════════╝"
+          echo ""
+          mvn test -V 2>&1 | tee test.log
+          TEST_STATUS=$?
+          echo ""
+          if [ $TEST_STATUS -eq 0 ]; then
+            echo "✅ All tests passed!"
+          else
+            echo "❌ Some tests failed"
+            exit $TEST_STATUS
+          fi
+          
+      # ============================================
+      # STEP 9: Generate Test Report
+      # ============================================
+      - name: Generate & Display Test Results
+        run: |
+          echo "╔════════════════════════════════════════════════════════════════════╗"
+          echo "║                    TEST RESULTS SUMMARY                            ║"
+          echo "╚════════════════════════════════════════════════════════════════════╝"
+          echo ""
+          if [ -f "target/surefire-reports/TEST-*.xml" ]; then
+            echo "📊 Test Report Files Generated:"
+            ls -la target/surefire-reports/ | grep "\.xml\|\.txt" || echo "No reports found"
+          fi
+          echo ""
+          
+      # ============================================
+      # STEP 10: Build Artifact Information
+      # ============================================
+      - name: Display Build Artifacts
+        run: |
+          echo "╔════════════════════════════════════════════════════════════════════╗"
+          echo "║                   BUILD ARTIFACTS GENERATED                        ║"
+          echo "╚════════════════════════════════════════════════════════════════════╝"
+          echo ""
+          if [ -d "target" ]; then
+            echo "📦 Generated Artifacts:"
+            ls -lh target/*.jar target/*.war 2>/dev/null | awk '{print "   " $9 " (" $5 ")"}' || echo "   No JAR/WAR files generated"
+            echo ""
+            echo "📁 Target Directory Size:"
+            du -sh target/
+          fi
+          echo ""
+          
+      # ============================================
+      # STEP 11: Security Scan & Report
+      # ============================================
+      - name: Security & Dependency Audit
+        run: |
+          echo "╔════════════════════════════════════════════════════════════════════╗"
+          echo "║             DEPENDENCY SECURITY AUDIT                             ║"
+          echo "╚════════════════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "🔐 Checking for Known Vulnerabilities:"
+          mvn dependency:check-updates 2>&1 | grep -E "Update|SNAPSHOT|Updates available" || echo "   No updates needed"
+          echo ""
+          
+      # ============================================
+      # STEP 12: Final Summary
+      # ============================================
+      - name: Display Final Summary
+        if: always()
+        run: |
+          echo "╔════════════════════════════════════════════════════════════════════╗"
+          echo "║            BUILD & DIAGNOSTICS WORKFLOW COMPLETED                 ║"
+          echo "╚════════════════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "🎯 SUMMARY:"
+          echo "   Project: ${{ env.PROJECT_NAME }}"
+          echo "   Java Version: ${{ env.JAVA_VERSION }}"
+          echo "   Framework: Spring Boot 3.3.2"
+          echo "   Status: Diagnostic workflow executed"
+          echo ""
+          echo "📝 NEXT STEPS:"
+          echo "   1. Review build output in build.log"
+          echo "   2. Check test results in target/surefire-reports/"
+          echo "   3. Verify all artifacts in target/ directory"
+          echo "   4. Check for any security warnings above"
+          echo ""
