@@ -1,0 +1,199 @@
+name: 📦 Auto Version Tagging
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Manual version override (e.g., 1.0.0, 1.1.0, 1.0.1). Leave empty for automatic increment'
+        required: false
+        default: ''
+      is_hotfix:
+        description: 'Mark this release as a hotfix?'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  tags: write
+
+jobs:
+  version-tag:
+    name: 🏷️ Create Version Tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_hotfix: ${{ steps.version.outputs.is_hotfix }}
+      changelog: ${{ steps.changelog.outputs.content }}
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for git operations
+
+      - name: 🔍 Get latest tag
+        id: latest_tag
+        run: |
+          # Get the latest semantic version tag
+          LATEST_TAG=$(git describe --tags --abbrev=0 --match="v[0-9]*.[0-9]*.[0-9]*" 2>/dev/null || echo "v0.0.0")
+          echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "Latest tag: $LATEST_TAG"
+
+      - name: 📊 Determine version
+        id: version
+        env:
+          LATEST_TAG: ${{ steps.latest_tag.outputs.tag }}
+          MANUAL_VERSION: ${{ github.event.inputs.version }}
+          IS_HOTFIX: ${{ github.event.inputs.is_hotfix }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          # Remove 'v' prefix if present
+          CURRENT_VERSION=${LATEST_TAG#v}
+          
+          # Manual version override via workflow_dispatch
+          if [[ -n "$MANUAL_VERSION" ]]; then
+            NEW_VERSION="$MANUAL_VERSION"
+            echo "Using manual version override: $NEW_VERSION"
+          else
+            # Parse current version
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+            
+            # Auto-increment patch version
+            PATCH=$((PATCH + 1))
+            NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+            
+            echo "Auto-incrementing from $CURRENT_VERSION to $NEW_VERSION"
+          fi
+          
+          # Determine if this is a hotfix
+          IS_HOTFIX_FINAL="$IS_HOTFIX"
+          if [[ -z "$IS_HOTFIX_FINAL" ]]; then
+            # Check if commit message contains hotfix keywords
+            if [[ "$COMMIT_MSG" =~ (hotfix|fix:|HOTFIX) ]]; then
+              IS_HOTFIX_FINAL="true"
+            else
+              IS_HOTFIX_FINAL="false"
+            fi
+          fi
+          
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "is_hotfix=$IS_HOTFIX_FINAL" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION (Hotfix: $IS_HOTFIX_FINAL)"
+
+      - name: 📝 Generate changelog
+        id: changelog
+        env:
+          LATEST_TAG: ${{ steps.latest_tag.outputs.tag }}
+        run: |
+          # Get commits since last tag
+          if [[ "$LATEST_TAG" != "v0.0.0" ]]; then
+            COMMIT_LOG=$(git log $LATEST_TAG..HEAD --oneline --pretty=format:"%h - %s (%ae)" 2>/dev/null || echo "Initial commit")
+          else
+            COMMIT_LOG=$(git log --oneline --pretty=format:"%h - %s (%ae)" 2>/dev/null || echo "Initial commit")
+          fi
+          
+          # Create changelog content
+          CHANGELOG="## Release v${{ steps.version.outputs.version }}"
+          if [[ "${{ steps.version.outputs.is_hotfix }}" == "true" ]]; then
+            CHANGELOG+="\n### 🔥 HOTFIX Release"
+          fi
+          CHANGELOG+="\n\n### 📋 Changes\n\`\`\`\n$COMMIT_LOG\n\`\`\`"
+          
+          # Save to file for release body
+          echo -e "$CHANGELOG" > /tmp/changelog.txt
+          
+          # Output for later use
+          echo "content<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: 🏷️ Create and push tag
+        env:
+          NEW_VERSION: ${{ steps.version.outputs.version }}
+          IS_HOTFIX: ${{ steps.version.outputs.is_hotfix }}
+        run: |
+          # Determine tag message
+          if [[ "$IS_HOTFIX" == "true" ]]; then
+            TAG_MESSAGE="🔥 Hotfix Release v$NEW_VERSION"
+          else
+            TAG_MESSAGE="Release v$NEW_VERSION"
+          fi
+          
+          # Create annotated tag
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          git tag -a "v$NEW_VERSION" -m "$TAG_MESSAGE" HEAD
+          git push origin "v$NEW_VERSION"
+          
+          echo "✅ Created tag: v$NEW_VERSION"
+
+      - name: 📤 Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          body: ${{ steps.changelog.outputs.content }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-version-file:
+    name: 📝 Update Version in pom.xml
+    needs: version-tag
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: 🔧 Update pom.xml version
+        env:
+          NEW_VERSION: ${{ needs.version-tag.outputs.version }}
+        run: |
+          # Update version in pom.xml
+          sed -i "s/<version>.*<\/version>/<version>$NEW_VERSION<\/version>/" pom.xml
+          echo "Updated pom.xml version to: $NEW_VERSION"
+
+      - name: 💾 Commit and push version update
+        env:
+          NEW_VERSION: ${{ needs.version-tag.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          git add pom.xml
+          
+          # Check if there are changes
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore(release): v$NEW_VERSION"
+            git push origin main
+            echo "✅ Updated pom.xml and pushed to main"
+          fi
+
+  notify:
+    name: 📢 Notify Release
+    needs: [version-tag, update-version-file]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: 📊 Release Summary
+        run: |
+          echo "### ✅ Release Workflow Complete"
+          echo "- **Version**: v${{ needs.version-tag.outputs.version }}"
+          echo "- **Hotfix**: ${{ needs.version-tag.outputs.is_hotfix }}"
+          echo "- **Tag**: v${{ needs.version-tag.outputs.version }}"
+          echo ""
+          echo "### 📝 Changes"
+          echo "${{ needs.version-tag.outputs.changelog }}"
