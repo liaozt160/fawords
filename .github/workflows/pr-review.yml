@@ -1,0 +1,25 @@
+name: OpenHands PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  pr-review:
+    runs-on: [self-hosted, st]
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: OpenHands PR Review
+        uses: OpenHands/extensions/plugins/pr-review@main
+        with:
+          github-token: ${{ secrets.PAT_TOKEN }}
+          llm-model: gemini-flash-main
+          llm-base-url: http://192.168.0.101:4000/v1
+          llm-api-key: ${{ secrets.OPENHANDS_LLM_API_KEY }}
