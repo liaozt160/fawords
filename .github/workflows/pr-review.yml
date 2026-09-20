@@ -10,6 +10,10 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    env:
+      HTTP_PROXY: http://192.168.0.101:10808
+      HTTPS_PROXY: http://192.168.0.101:10808
+      NO_PROXY: localhost,127.0.0.1,192.168.0.30,192.168.0.101
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
