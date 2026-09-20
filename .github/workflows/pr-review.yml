@@ -20,6 +20,6 @@ jobs:
         uses: OpenHands/extensions/plugins/pr-review@main
         with:
           github-token: ${{ secrets.PAT_TOKEN }}
-          llm-model: gemini-flash-main
+          llm-model: openai/gemini-flash-main
           llm-base-url: http://192.168.0.101:4000/v1
           llm-api-key: ${{ secrets.OPENHANDS_LLM_API_KEY }}
