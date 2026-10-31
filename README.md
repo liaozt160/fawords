@@ -68,7 +68,68 @@ When making changes:
 1. Make the smallest change that satisfies the requirement.
 2. Add or update tests to demonstrate the behavior.
 3. Don’t touch unrelated files or refactor large sections without an explicit request.
+## Version Management
 
+Fawords uses **automatic semantic versioning** with manual override capabilities.
+
+### Version Format
+
+```
+MAJOR.MINOR.PATCH
+
+Example: 1.0.0, 1.0.1, 1.1.0, 2.0.0
+```
+
+### Automatic Versioning (Default)
+
+- **Trigger**: Pull request merged to `main` or `master`
+- **Action**: Patch version auto-incremented (1.0.0 → 1.0.1)
+- **Workflow**: `.github/workflows/auto-version-tagging.yml`
+- **Result**: GitHub Release created, `pom.xml` updated
+
+### Manual Versioning
+
+**Option 1: GitHub Actions UI**
+- Go to **Actions** → **📦 Auto Version Tagging**
+- Click **Run workflow**
+- Specify version (e.g., `1.1.0` or `1.5.0`)
+- Check `is_hotfix` if needed
+- Click **Run workflow**
+
+**Option 2: Command Line Script**
+```bash
+# Show current version
+./scripts/version-management.sh current
+
+# Increment minor version (new features)
+./scripts/version-management.sh increment minor
+
+# Set specific version (breaking changes)
+./scripts/version-management.sh set 2.0.0
+
+# Create hotfix version
+./scripts/version-management.sh hotfix
+
+# Dry run (preview changes)
+./scripts/version-management.sh increment patch --dry-run
+
+# List all versions
+./scripts/version-management.sh list
+```
+
+### Hotfix Releases
+
+For critical production issues:
+
+1. Create hotfix branch: `git checkout -b hotfix/issue-description`
+2. Fix the issue and commit: `git commit -m "hotfix: critical issue fixed"`
+3. Create PR to main and merge
+4. Workflow automatically detects hotfix and tags release
+
+### Documentation
+
+- **Full Guide**: [docs/VERSION_MANAGEMENT.md](docs/VERSION_MANAGEMENT.md)
+- **Quick Reference**: [docs/VERSION_QUICK_REFERENCE.md](docs/VERSION_QUICK_REFERENCE.md)
 This repository follows a conservative approach to changes: keep edits minimal and well-tested.
 
 ## License
