@@ -2,7 +2,7 @@ package com.fawords;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -28,6 +28,6 @@ class AboutApiTest {
     void helloApiReturnsCorrectContent() throws Exception {
         mockMvc.perform(get("/hello"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Hello World! This is Spring Boot 3.4.1 running on Java 21 inside Fawords (fawords.com)."));
+                .andExpect(content().string("Hello World! This is Spring Boot 4.1.2 running on Java 25 inside Fawords (fawords.com)."));
     }
 }
