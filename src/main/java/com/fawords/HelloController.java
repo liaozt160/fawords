@@ -11,7 +11,7 @@ public class HelloController {
 
     @GetMapping("/hello")
     public String sayHello() {
-        return "Hello World! This is Spring Boot 3.4.1 running on Java 21 inside Fawords (fawords.com).";
+        return "Hello World! This is Spring Boot 4.1.2 running on Java 25 inside Fawords (fawords.com).";
     }
 
     @GetMapping("/api/about")
