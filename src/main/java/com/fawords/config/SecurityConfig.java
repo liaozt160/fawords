@@ -38,8 +38,16 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/api/about", "/hello").permitAll()
-                        .anyRequest().permitAll()
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/api/auth/**",
+                                "/api/about",
+                                "/hello",
+                                "/api/health"
+                        ).permitAll()
+                        .anyRequest().authenticated()
                 );
 
         if (jwtAuthFilter != null) {
