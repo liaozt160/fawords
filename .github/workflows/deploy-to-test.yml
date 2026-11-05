@@ -20,8 +20,8 @@ jobs:
       - name: 🚀 Ensure Deployments Directory and Permissions
         run: |
           sudo mkdir -p /home/liao/deployments/fawords-test
+          # Only use chmod to grant permissions, avoid chown as user 'liao' might not exist in runner container
           sudo chmod -R 777 /home/liao/deployments/fawords-test
-          sudo chown -R liao:liao /home/liao/deployments/fawords-test
 
       - name: 🚀 Rebuild & Deploy Test Service
         run: |
