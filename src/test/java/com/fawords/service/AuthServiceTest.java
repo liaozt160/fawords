@@ -57,7 +57,7 @@ public class AuthServiceTest {
 
         String result = authService.registerUser(request);
 
-        assertEquals("User registered successfully!", result);
+        assertTrue(result.contains("User registered successfully"));
 
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
@@ -120,5 +120,64 @@ public class AuthServiceTest {
         assertEquals("jwt-token-123", response.getToken());
         assertEquals("testuser", response.getUsername());
         assertEquals("User authenticated successfully!", response.getMessage());
+    }
+
+    @Test
+    public void testVerifyEmailSuccess() {
+        SignupRequest request = new SignupRequest();
+        request.setUsername("verifyuser");
+        request.setEmail("verify@example.com");
+        request.setPassword("password123");
+
+        when(userRepository.existsByUsername("verifyuser")).thenReturn(false);
+        when(userRepository.existsByEmail("verify@example.com")).thenReturn(false);
+
+        String regResult = authService.registerUser(request);
+        String token = regResult.substring(regResult.indexOf("Verification token (simulation): ") + 33);
+
+        User user = new User();
+        user.setUsername("verifyuser");
+        user.setEmail("verify@example.com");
+
+        when(userRepository.findByUsername("verifyuser")).thenReturn(java.util.Optional.of(user));
+
+        String result = authService.verifyEmail(token);
+        assertEquals("Email verified successfully!", result);
+        assertTrue(user.isEmailVerified());
+        verify(userRepository, times(2)).save(any(User.class));
+    }
+
+    @Test
+    public void testForgotPasswordAndResetSuccess() {
+        User user = new User();
+        user.setUsername("resetuser");
+        user.setEmail("reset@example.com");
+
+        when(userRepository.findByEmail("reset@example.com")).thenReturn(java.util.Optional.of(user));
+        when(passwordEncoder.encode("newpassword123")).thenReturn("encodedNewPassword");
+
+        String initResult = authService.initiateForgotPassword("reset@example.com");
+        assertTrue(initResult.contains("Password reset initiated"));
+        String token = initResult.substring(initResult.indexOf("Reset token (simulation): ") + 26);
+
+        String resetResult = authService.resetPassword(token, "newpassword123");
+        assertEquals("Password reset successfully!", resetResult);
+        assertEquals("encodedNewPassword", user.getPassword());
+    }
+
+    @Test
+    public void testGoogleLoginNewUser() {
+        com.fawords.payload.request.GoogleLoginRequest googleRequest = new com.fawords.payload.request.GoogleLoginRequest("google-id-123", "google@example.com", "Google User", "http://avatar.jpg");
+
+        when(userRepository.findByOauth2Id("google-id-123")).thenReturn(java.util.Optional.empty());
+        when(userRepository.findByEmail("google@example.com")).thenReturn(java.util.Optional.empty());
+        when(jwtUtils.generateToken(anyString())).thenReturn("google-jwt-token");
+
+        AuthResponse response = authService.googleLogin(googleRequest);
+
+        assertNotNull(response);
+        assertEquals("google-jwt-token", response.getToken());
+        assertEquals("Google login successful!", response.getMessage());
+        verify(userRepository).save(any(User.class));
     }
 }

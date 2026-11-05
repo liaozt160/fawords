@@ -36,12 +36,13 @@ public class AuthControllerTest {
     @Test
     public void testSignupSuccess() throws Exception {
         String json = "{\"username\":\"testuser\", \"email\":\"test@example.com\", \"password\":\"password123\"}";
+        when(authService.registerUser(any(SignupRequest.class))).thenReturn("User registered successfully! Verification token (simulation): token-123");
         
         mockMvc.perform(post("/api/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json))
                 .andExpect(status().isOk())
-                .andExpect(content().string("User registered successfully"));
+                .andExpect(content().string("User registered successfully! Verification token (simulation): token-123"));
     }
 
     @Test
@@ -82,5 +83,54 @@ public class AuthControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json))
                 .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    public void testVerifyEmailSuccess() throws Exception {
+        String json = "{\"token\":\"verify-token-123\"}";
+        when(authService.verifyEmail("verify-token-123")).thenReturn("Email verified successfully!");
+
+        mockMvc.perform(post("/api/auth/verify-email")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Email verified successfully!"));
+    }
+
+    @Test
+    public void testForgotPasswordSuccess() throws Exception {
+        String json = "{\"email\":\"test@example.com\"}";
+        when(authService.initiateForgotPassword("test@example.com")).thenReturn("Password reset initiated!");
+
+        mockMvc.perform(post("/api/auth/forgot-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Password reset initiated!"));
+    }
+
+    @Test
+    public void testResetPasswordSuccess() throws Exception {
+        String json = "{\"token\":\"reset-token-123\", \"newPassword\":\"newpass123\"}";
+        when(authService.resetPassword("reset-token-123", "newpass123")).thenReturn("Password reset successfully!");
+
+        mockMvc.perform(post("/api/auth/reset-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Password reset successfully!"));
+    }
+
+    @Test
+    public void testGoogleLoginSuccess() throws Exception {
+        String json = "{\"idToken\":\"google-token-123\", \"email\":\"google@example.com\", \"name\":\"Google User\", \"avatarUrl\":\"http://avatar.jpg\"}";
+        AuthResponse response = new AuthResponse("google-jwt-123", "google_user", "Google login successful!");
+        when(authService.googleLogin(any(com.fawords.payload.request.GoogleLoginRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/auth/google")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").value("google-jwt-123"));
     }
 }
