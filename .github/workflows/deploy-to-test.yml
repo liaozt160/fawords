@@ -17,18 +17,18 @@ jobs:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🚀 Deploy Test Service
+      - name: 🚀 Deploy Test Service via Local Docker Build
         run: |
           # 1. 确保目标部署目录存在
           sudo mkdir -p /home/liao/deployments/fawords-test
           
-          # 2. 将当前代码仓库中的 docker-compose.yml 复制到宿主机部署目录
+          # 2. 生成 docker-compose.yml 配置文件（注意 context 使用当前 runner 目录下的代码，避免权限越权）
           sudo cat << 'EOF' | sudo tee /home/liao/deployments/fawords-test/docker-compose.yml
           services:
             app:
               image: fawords:latest
               build: 
-                context: /home/liao/projects/fawords
+                context: .
                 dockerfile: Dockerfile
               ports:
                 - "8081:8080"
@@ -43,7 +43,10 @@ jobs:
               restart: always
           EOF
 
-          # 3. 在宿主机部署目录下执行重新构建与启动
+          # 3. 把当前工作区的代码复制到部署目录中，确保 build context 安全在目录下
+          sudo cp -r . /home/liao/deployments/fawords-test/
+          
+          # 4. 在部署目录下执行重新构建与启动
           cd /home/liao/deployments/fawords-test
           docker-compose up -d --build
           echo "✅ Test service re-deployed successfully at http://192.168.0.30:8081"
