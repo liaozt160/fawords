@@ -17,9 +17,14 @@ jobs:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
+      - name: 🚀 Ensure Deployments Directory and Permissions
+        run: |
+          sudo mkdir -p /home/liao/deployments/fawords-test
+          sudo chmod -R 777 /home/liao/deployments/fawords-test
+          sudo chown -R liao:liao /home/liao/deployments/fawords-test
+
       - name: 🚀 Rebuild & Deploy Test Service
         run: |
-          mkdir -p /home/liao/deployments/fawords-test
           cd /home/liao/deployments/fawords-test
-          docker compose up -d --build
+          docker-compose up -d --build
           echo "✅ Test service re-deployed successfully at http://192.168.0.30:8081"
