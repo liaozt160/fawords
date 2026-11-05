@@ -17,14 +17,33 @@ jobs:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🚀 Ensure Deployments Directory and Permissions
+      - name: 🚀 Deploy Test Service
         run: |
+          # 1. 确保目标部署目录存在
           sudo mkdir -p /home/liao/deployments/fawords-test
-          # Only use chmod to grant permissions, avoid chown as user 'liao' might not exist in runner container
-          sudo chmod -R 777 /home/liao/deployments/fawords-test
+          
+          # 2. 将当前代码仓库中的 docker-compose.yml 复制到宿主机部署目录
+          sudo cat << 'EOF' | sudo tee /home/liao/deployments/fawords-test/docker-compose.yml
+          services:
+            app:
+              image: fawords:latest
+              build: 
+                context: /home/liao/projects/fawords
+                dockerfile: Dockerfile
+              ports:
+                - "8081:8080"
+              environment:
+                - SPRING_PROFILES_ACTIVE=test
+                - SPRING_DATASOURCE_URL=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+                - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.h2.Driver
+                - SPRING_DATASOURCE_USERNAME=sa
+                - SPRING_DATASOURCE_PASSWORD=
+                - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.H2Dialect
+                - SPRING_H2_CONSOLE_ENABLED=true
+              restart: always
+          EOF
 
-      - name: 🚀 Rebuild & Deploy Test Service
-        run: |
+          # 3. 在宿主机部署目录下执行重新构建与启动
           cd /home/liao/deployments/fawords-test
           docker-compose up -d --build
           echo "✅ Test service re-deployed successfully at http://192.168.0.30:8081"
