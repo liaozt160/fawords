@@ -1,0 +1,24 @@
+name: 🚀 Deploy to Test Service
+
+on:
+  workflow_run:
+    workflows: ["📦 Auto Version Tagging"]
+    types:
+      - completed
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: 🐳 Deploy Test Container
+    runs-on: [self-hosted, st]
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🚀 Rebuild & Deploy Test Service
+        run: |
+          cd /home/liao/deployments/fawords-test
+          docker compose up -d --build
+          echo "✅ Test service re-deployed successfully at http://192.168.0.30:8081"
