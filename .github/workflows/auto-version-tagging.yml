@@ -8,11 +8,6 @@ on:
     paths-ignore:
       - 'pom.xml'
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Manual version override'
-        required: false
-        default: ''
 
 permissions:
   contents: write
@@ -36,6 +31,19 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
+      - name: 🔍 Debug Environment
+        run: |
+          echo "JAVA_HOME is: $JAVA_HOME"
+          ls -l $JAVA_HOME/bin/java || echo "Java binary not found in JAVA_HOME"
+          ./mvnw -version
+
+      - name: 🔧 Update pom.xml version
+        run: |
+          # 显式导出变量确保 mvnw 脚本能读取到
+          export JAVA_HOME=$JAVA_HOME
+          export PATH=$JAVA_HOME/bin:$PATH
+          ./mvnw versions:set -DnewVersion=0.0.1 -DgenerateBackupPoms=false
+
       - name: 🔍 Get latest tag
         id: latest_tag
         run: |
@@ -52,10 +60,6 @@ jobs:
           PATCH=$((PATCH + 1))
           NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
-
-      - name: 🔧 Update pom.xml version
-        run: |
-          ./mvnw versions:set -DnewVersion=${{ steps.version.outputs.version }} -DgenerateBackupPoms=false
 
       - name: 💾 Commit, Tag and Push
         run: |
