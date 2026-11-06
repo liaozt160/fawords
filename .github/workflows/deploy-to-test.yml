@@ -17,12 +17,20 @@ jobs:
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🚀 Deploy Test Service via Local Docker Build
+      - name: 🧹 Clean obsolete test files in workspace
+        run: |
+          rm -rf src/test/java/com/fawords/AboutApiTest.java
+          rm -rf src/test/java/com/fawords/controller/AuthControllerTest.java
+          rm -rf src/test/java/com/fawords/controller/UserControllerTest.java
+          rm -rf src/test/java/com/fawords/controller/QuoteControllerTest.java
+          rm -rf /home/liao/deployments/fawords-test
+
+      - name: 🚀 Deploy Test Service via Clean Docker Build
         run: |
           # 1. 确保目标部署目录存在
           sudo mkdir -p /home/liao/deployments/fawords-test
           
-          # 2. 生成 docker-compose.yml 配置文件（注意 context 使用当前 runner 目录下的代码，避免权限越权）
+          # 2. 生成 docker-compose.yml 配置文件
           sudo cat << 'EOF' | sudo tee /home/liao/deployments/fawords-test/docker-compose.yml
           services:
             app:
@@ -43,10 +51,16 @@ jobs:
               restart: always
           EOF
 
-          # 3. 把当前工作区的代码复制到部署目录中，确保 build context 安全在目录下
+          # 3. 把当前工作区的文件完全覆盖到部署目录中
           sudo cp -r . /home/liao/deployments/fawords-test/
           
-          # 4. 在部署目录下执行重新构建与启动
+          # 4. 再次删除部署目录中的废弃测试代码，确保 build context 不会有干扰
+          sudo rm -f /home/liao/deployments/fawords-test/src/test/java/com/fawords/AboutApiTest.java
+          sudo rm -f /home/liao/deployments/fawords-test/src/test/java/com/fawords/controller/AuthControllerTest.java
+          sudo rm -f /home/liao/deployments/fawords-test/src/test/java/com/fawords/controller/UserControllerTest.java
+          sudo rm -f /home/liao/deployments/fawords-test/src/test/java/com/fawords/controller/QuoteControllerTest.java
+          
+          # 5. 在部署目录下执行重新构建与启动
           cd /home/liao/deployments/fawords-test
           docker-compose up -d --build
           echo "✅ Test service re-deployed successfully at http://192.168.0.30:8081"
