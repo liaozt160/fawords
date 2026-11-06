@@ -45,7 +45,8 @@ public class SecurityConfig {
                                 "/api/auth/**",
                                 "/api/about",
                                 "/hello",
-                                "/api/health"
+                                "/api/health",
+                                "/api/quotes/public"
                         ).permitAll()
                         .anyRequest().authenticated()
                 );
