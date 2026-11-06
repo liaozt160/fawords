@@ -1,0 +1,59 @@
+name: 🤖 OpenHands Bridge Trigger
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  dispatch-task:
+    runs-on: [self-hosted, st]
+    steps:
+      - name: 🚀 Dispatch Async Goal to OpenHands
+        env:
+          ISSUE_NUM: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          echo "🚀 Dispatching Issue #$ISSUE_NUM to OpenHands..."
+
+          # 1. Create a conversation
+          RESPONSE=$(curl -s -X POST "http://localhost:8000/api/conversations" \
+            -H "Content-Type: application/json" \
+            -d '{"title": "Issue #'"$ISSUE_NUM"': '"$ISSUE_TITLE"''"}')
+
+          CONV_ID=$(echo "$RESPONSE" | jq -r '.id')
+          echo "💬 Created Conversation ID: $CONV_ID"
+
+          if [ "$CONV_ID" = "null" ] || [ -z "$CONV_ID" ]; then
+            echo "❌ Failed to create OpenHands conversation."
+            exit 1
+          fi
+
+          # 2. Construct comprehensive prompt for OpenHands
+          PROMPT="你是一个全栈 AI 工程师。请处理 Fawords 项目（仓库: $GITHUB_REPOSITORY）的 Issue #$ISSUE_NUM: $ISSUE_TITLE。
+          
+          【需求详情】：
+          $ISSUE_BODY
+
+          【执行步骤与规范】：
+          1. 切换或进入工作目录：/projects/fawords
+          2. 在 GitHub Issue #$ISSUE_NUM 发表评论：'🤖 OpenHands 已领取任务，正在基于 main 分支进行开发...'
+          3. 编写代码实现上述需求。
+          4. 运行编译与测试：'./mvnw test'。若失败，请自我修正代码直到测试通过。
+          5. 创建新分支：'feat/issue-$ISSUE_NUM'。
+          6. 提交代码并 Push 到远程仓库（注意使用配置好的 Git 凭证）。
+          7. 使用 GitHub CLI 创建 Pull Request 关联 Issue #$ISSUE_NUM：
+             'gh pr create --repo $GITHUB_REPOSITORY --title \"feat: $ISSUE_TITLE\" --body \"Closes #$ISSUE_NUM\"'
+          8. 在 GitHub Issue #$ISSUE_NUM 发表评论：'✅ 开发完成，已提 PR，请人工复核。'
+          9. 【重要收尾】：任务完成后，请通过 API 销毁当前会话以释放资源：
+             'curl -X DELETE http://localhost:8000/api/conversations/$CONV_ID'
+          "
+
+          # 3. Send goal to OpenHands asynchronously
+          curl -s -X POST "http://localhost:8000/api/conversations/$CONV_ID/goal" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg goal "$PROMPT" '{goal: $goal}')"
+
+          echo "✅ Successfully dispatched task to OpenHands session: $CONV_ID"
