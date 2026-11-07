@@ -17,37 +17,58 @@ jobs:
         run: |
           echo "🚀 Dispatching Issue #$ISSUE_NUM to OpenHands..."
 
-          # Fetch API Key from server side persistent file
-          API_KEY=$(cat /home/openhands/.openhands/agent-canvas/api-key.txt)
+          # API Key for OpenHands (Hardcoded for testing, should be moved to Secrets)
+          API_KEY="9d8706c9577e73585763fd437d6295203913acdd7fbf53d177814a78ea7c400b"
 
           # Construct correct JSON payload for OpenHands Native API
+          # We use jq to handle all escaping of issue titles and bodies
           PROMPT="你是一个全栈 AI 工程师。请处理 Fawords 项目的 Issue #${ISSUE_NUM}: ${ISSUE_TITLE}。
-          需求：${ISSUE_BODY}
+          
+          需求详情：
+          ${ISSUE_BODY}
+
           执行规范：
           1. 切换到工作目录 /projects/fawords。
-          2. 在 Issue #${ISSUE_NUM} 下回复任务领取状态。
+          2. 在 GitHub Issue #${ISSUE_NUM} 发表评论：'🤖 OpenHands 已领取任务，正在基于 main 分支进行开发...'
           3. 编写代码并运行 './mvnw test' 验证。
-          4. 创建分支 feat/issue-${ISSUE_NUM}，推送并创建 PR。
-          5. 任务完成后，调用 DELETE /api/conversations/$CONV_ID 销毁会话。"
+          4. 创建分支 feat/issue-${ISSUE_NUM}。
+          5. 提交代码并 Push。
+          6. 创建 PR 关联 Issue #${ISSUE_NUM}。
+          7. 任务完成后，发表成功评论。
+          "
 
           PAYLOAD=$(jq -n \
             --arg title "Issue #$ISSUE_NUM: $ISSUE_TITLE" \
             --arg dir "/projects/fawords" \
             --arg goal "$PROMPT" \
-            '{title: $title, workspace: {working_dir: $dir}, initial_message: {role: "user", content: [{type: "text", text: $goal}]}}')
+            '{
+              "title": $title,
+              "workspace": {
+                "working_dir": $dir
+              },
+              "initial_message": {
+                "role": "user",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": $goal
+                  }
+                ]
+              }
+            }')
 
-          # 1. Create conversation
+          # 1. Create conversation and get ID
           RESPONSE=$(curl -s -X POST "http://localhost:8000/api/conversations" \
             -H "Content-Type: application/json" \
             -H "X-Session-API-Key: $API_KEY" \
             -d "$PAYLOAD")
 
           CONV_ID=$(echo "$RESPONSE" | jq -r '.conversation_id')
-          echo "💬 Created Conversation ID: $CONV_ID"
-
+          
           if [ "$CONV_ID" = "null" ] || [ -z "$CONV_ID" ]; then
-            echo "❌ Failed to create OpenHands conversation."
+            echo "❌ Failed to create OpenHands conversation. Response: $RESPONSE"
             exit 1
           fi
 
           echo "✅ Task successfully dispatched to OpenHands session: $CONV_ID"
+          echo "🔗 Monitor at: http://192.168.0.30:8000/canvas/$CONV_ID"
